@@ -41,11 +41,17 @@ def load_cookies():
         print(f"未找到 {cookie_file} 文件")
         print("正在自动调用 cookie 获取脚本...")
         import subprocess
+        import sys
         try:
-            subprocess.run(['python', '58同城 cookie自动化获取.py'], check=True)
+            # 使用 sys.executable 确保使用当前 Python 解释器
+            # 使用 os.path.dirname 确保在正确的目录查找文件
+            script_path = os.path.join(os.path.dirname(__file__), '58 同城 cookie 自动化获取.py')
+            subprocess.run([sys.executable, script_path], check=True, encoding='utf-8')
+            # 等待一会儿确保文件已保存
+            time.sleep(3)
         except Exception as e:
             print(f"自动获取 cookie 失败：{e}")
-            print("请手动运行 'python 58同城 cookie自动化获取.py' 获取 cookie")
+            print("请手动运行 'python 58 同城 cookie 自动化获取.py' 获取 cookie")
             return ""
     
     try:
