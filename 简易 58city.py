@@ -1,5 +1,6 @@
 import os
 import time
+import json
 
 import pandas as pd
 from lxml import etree
@@ -33,10 +34,44 @@ def append_to_excel(data, excel_path, columns):
         df.to_excel(excel_path, index=False, engine='openpyxl')
         return len(df)
 
-def search_url(url):
+def load_cookies():
+    """从 JSON 文件加载 cookie，如果没有则自动获取"""
+    cookie_file = '58city_cookies.json'
+    if not os.path.exists(cookie_file):
+        print(f"未找到 {cookie_file} 文件")
+        print("正在自动调用 cookie 获取脚本...")
+        import subprocess
+        try:
+            subprocess.run(['python', '58同城 cookie自动化获取.py'], check=True)
+        except Exception as e:
+            print(f"自动获取 cookie 失败：{e}")
+            print("请手动运行 'python 58同城 cookie自动化获取.py' 获取 cookie")
+            return ""
+    
+    try:
+        with open(cookie_file, 'r', encoding='utf-8') as f:
+            cookies_list = json.load(f)
+        # 将 cookie 列表转换为 requests 需要的字典格式
+        cookies_dict = {}
+        for cookie in cookies_list:
+            name = cookie.get('name')
+            value = cookie.get('value')
+            if name and value:
+                cookies_dict[name] = value
+        
+        # 转换成 cookie 字符串格式
+        cookie_string = '; '.join([f"{name}={value}" for name, value in cookies_dict.items()])
+        return cookie_string
+    except Exception as e:
+        print(f"读取 cookie 文件失败：{e}")
+        return ""
+
+def search_url(url, cookies_str):
     headers = {
         'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0',
+        'Cookie': cookies_str
     }
+
     try:
         response = requests.get(url, headers=headers, timeout=10)
         time.sleep(1)
@@ -65,11 +100,19 @@ if __name__ == "__main__":
     columns = ["序号", "标题", "价格 (元/月)","房屋类型和面积", "详细地址", "来源链接"]
     start_page = 1
     end_page = 70
+    # 加载 cookie
+    print("正在加载 cookie...")
+    cookies_str = load_cookies()
+    if not cookies_str:
+        print("无法继续执行，程序退出。")
+        exit()
+    print("✓ Cookie 加载成功！")
+    
     for page in range(start_page, end_page + 1):
         print(f"\n正在爬取第 {page} 页...")
         urls = [f'https://sh.58.com/chuzu/pn{page}/']
         for url in urls:
-            html_text = search_url(url)
+            html_text = search_url(url, cookies_str)
             tree = etree.HTML(html_text)
             # 获取所有房源链接
             house_elements = tree.xpath('/html/body/div[6]/div[2]/ul/li')

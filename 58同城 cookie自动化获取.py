@@ -4,7 +4,6 @@ import time
 from selenium import webdriver
 from selenium.webdriver.edge.options import Options
 from selenium.webdriver.edge.service import Service
-from selenium.webdriver.common.by import By
 
 def start():
     q1 = Options()
@@ -17,22 +16,8 @@ def get_Cookie():
         cookies = a1.get_cookies() #给你登入时间获取到 我们的cookie
         with open('58city_cookies.json', 'w') as f:
             f.write(json.dumps(cookies))  # 将cookies保存到本地cookies.json文件中 使用json.dumps 获取
-    with open('58city_cookies.json', 'r') as f:
-        cookies = json.loads(f.read()) #转化成字典
-        for cookie in cookies:
-            cookie_dict = {
-                'domain': cookie.get('domain'),
-                'name': cookie.get('name'),
-                'value': cookie.get('value'),
-                "expires": cookie.get('expires'),
-                'path': '/',
-                'httpOnly': False,
-                'HostOnly': False,
-                'Secure': False
-            }
-            a1.add_cookie(cookie_dict)
-        a1.refresh()
+        a1.quit()
 if __name__ == '__main__':
     a1 = start()
-    a1.get('https://xm.58.com/')
+    a1.get('https://passport.58.com/login/')
     get_Cookie()
