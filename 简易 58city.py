@@ -1,6 +1,4 @@
 import os
-import random
-import time
 import json
 import requests
 import pandas as pd
@@ -156,7 +154,7 @@ if __name__ == "__main__":
 
     for page in range(start_page, end_page + 1):
         print(f"\n正在爬取第 {page} 页...")
-        urls = [f'https://sh.58.com/chuzu/pn{page}/']
+        urls = [f'https://sh.58.com/chuzu/pn{page}/', f'https://fz.58.com/chuzu/pn{page}/']
         for url in urls:
             success = False
             house_elements = ""
