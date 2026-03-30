@@ -8,14 +8,41 @@ from lxml import etree
 import urllib3
 
 urllib3.disable_warnings()
-PROXY_POOL = [
-]
 
-USE_PROXY = True
+# 从 JSON 文件加载代理 IP
+def load_proxy_from_json():
+    try:
+        with open('free-ip-json.json', 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        # 提取 IP 和端口
+        proxy_list = [f"http://{item['ip']}:{item['port']}" for item in data]
+        return proxy_list
+    except Exception as e:
+        print(f"加载代理 JSON 文件失败：{e}")
+        return []
 
-def get_random_proxy():
-    if PROXY_POOL:
-        return random.choice(PROXY_POOL)
+# 初始化代理池
+PROXY_POOL = load_proxy_from_json()
+proxy_index = 0  # 当前使用的代理索引
+used_proxies = set()  # 已使用过的代理
+
+def get_next_proxy():
+    """按顺序获取下一个未使用的代理"""
+    global proxy_index, used_proxies
+    
+    # 如果所有代理都用过了，重置
+    if len(used_proxies) >= len(PROXY_POOL):
+        used_proxies.clear()
+        proxy_index = 0
+    
+    # 找到下一个未使用的代理
+    while proxy_index < len(PROXY_POOL):
+        proxy = PROXY_POOL[proxy_index]
+        proxy_index += 1
+        if proxy not in used_proxies:
+            used_proxies.add(proxy)
+            return proxy
+    
     return None
 
 def append_to_excel(data, excel_path, columns):
@@ -52,15 +79,15 @@ def load_cookies():
     cookies_dict = {c.get('name'): c.get('value') for c in cookies_list if c.get('name') and c.get('value')}
     return '; '.join([f"{name}={value}" for name, value in cookies_dict.items()])
 
-def fetch_proxy_from_api():
-    url = 'https://proxy.scdn.io/api/get_proxy.php?protocol=http&count=20'
-    params = {'protocol': 'http', 'count': 1}
-    response = requests.get(url, params=params, timeout=10)
-    data = response.json()
-    proxies = data.get('data', {}).get('proxies', [])
-
-    proxy_list = [f"http://{p}" for p in proxies ]
-    return proxy_list
+# def fetch_proxy_from_api():
+#     url = 'https://proxy.scdn.io/api/get_proxy.php?protocol=http&count=20'
+#     params = {'protocol': 'http', 'count': 1}
+#     response = requests.get(url, params=params, timeout=10)
+#     data = response.json()
+#     proxies = data.get('data', {}).get('proxies', [])
+#
+#     proxy_list = [f"http://{p}" for p in proxies ]
+#     return proxy_list
 
 def search_url(url, cookies_str, proxy):
     headers = {
@@ -77,6 +104,21 @@ def search_url(url, cookies_str, proxy):
         return response.text
 
 
+def get_proxy_for_retry():
+    """重试时获取新代理"""
+    # def fetch_proxy_from_api():
+    #     url = 'https://proxy.scdn.io/api/get_proxy.php?protocol=http&count=20'
+    #     params = {'protocol': 'http', 'count': 1}
+    #     response = requests.get(url, params=params, timeout=10)
+    #     data = response.json()
+    #     proxies = data.get('data', {}).get('proxies', [])
+    #     proxy_list = [f"http://{p}" for p in proxies ]
+    #     return proxy_list
+    
+    # 从本地列表获取下一个代理
+    return get_next_proxy()
+
+
 def clean_text(text_list):
     if not text_list:
         return ""
@@ -90,20 +132,19 @@ def clean_text(text_list):
 
 if __name__ == "__main__":
     desktop_path = os.path.join(os.path.expanduser("~"), "Desktop")
-    excel_path = os.path.join(desktop_path, "上海租房信息表.xlsx")
+    excel_path = os.path.join(desktop_path, "租房信息表.xlsx")
     all_houses = []
     # 定义列顺序
     columns = ["序号", "标题", "价格 (元/月)","房屋类型和面积", "详细地址", "来源链接"]
     start_page = 1
     end_page = 70
-
-    print("代理池为空，尝试自动获取...")
-    api_proxies = fetch_proxy_from_api()
-    proxy = ''
-    if api_proxies:
-        PROXY_POOL = api_proxies
-        proxy = get_random_proxy()
-        print(f"✓ 获取到 {len(PROXY_POOL)} 个代理 IP")
+    
+    # 获取初始代理
+    proxy = get_next_proxy()
+    if proxy:
+        print(f"✓ 已加载 {len(PROXY_POOL)} 个代理 IP，当前使用：{proxy}")
+    else:
+        print("⚠ 未找到可用代理 IP")
 
     # 加载 cookie
     print("正在加载 cookie...")
@@ -119,8 +160,8 @@ if __name__ == "__main__":
         for url in urls:
             success = False
             house_elements = ""
-            # 最多重试 5 次
-            for retry in range(8):
+            # 最多重试 20 次
+            for retry in range(20):
                 html_text = search_url(url, cookies_str, proxy)
                 tree = etree.HTML(html_text)
                 # 获取所有房源链接
@@ -130,20 +171,22 @@ if __name__ == "__main__":
                     success = True
                     break
                 else:
-                    print(f"  未获取到房源数据，尝试获取新 IP 重试... ({retry + 1}/5)")
-                # 获取新 IP
-                new_proxies = fetch_proxy_from_api()
-                if new_proxies:
-                    proxy = new_proxies[0]
-                    print(f"  已获取新代理：{proxy}")
+                    print(f"  未获取到房源数据，尝试切换 IP 重试... ({retry + 1}/20)")
+                # 获取下一个 IP
+                new_proxy = get_proxy_for_retry()
+                if new_proxy:
+                    proxy = new_proxy
+                    print(f"  已切换 IP: {proxy}")
+                else:
+                    print("  ⚠ 所有 IP 都已使用，将重新循环使用")
             
-            # 5 次重试都失败，跳过
+            # 8 次重试都失败，跳过
             if not success:
-                print(f"第 {page} 页重试 5 次后仍然失败，跳过")
+                print(f"第 {page} 页重试 20 次后仍然失败，跳过")
                 # 更新代理供下一页使用
-                new_proxies = fetch_proxy_from_api()
-                if new_proxies:
-                    proxy = new_proxies[0]
+                new_proxy = get_proxy_for_retry()
+                if new_proxy:
+                    proxy = new_proxy
                 continue
             
             house_links = house_elements[:-1]
