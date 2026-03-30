@@ -44,7 +44,7 @@ def load_cookies():
         print(f"未找到 {cookie_file} 文件，正在自动获取...")
         import subprocess
         import sys
-        script_path = os.path.join(os.path.dirname(__file__), '58 同城 cookie 自动化获取.py')
+        script_path = os.path.join(os.path.dirname(__file__), '58_cookie_auto.py')
         subprocess.run([sys.executable, script_path], check=True, encoding='utf-8')
 
     with open(cookie_file, 'r', encoding='utf-8') as f:
