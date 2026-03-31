@@ -25,10 +25,8 @@ proxy_index = 0  # 当前使用的代理索引
 used_proxies = set()  # 已使用过的代理
 
 def get_next_proxy():
-    """按顺序获取下一个未使用的代理"""
+
     global proxy_index, used_proxies
-    
-    # 如果所有代理都用过了，重置
     if len(used_proxies) >= len(PROXY_POOL):
         used_proxies.clear()
         proxy_index = 0
@@ -77,15 +75,6 @@ def load_cookies():
     cookies_dict = {c.get('name'): c.get('value') for c in cookies_list if c.get('name') and c.get('value')}
     return '; '.join([f"{name}={value}" for name, value in cookies_dict.items()])
 
-# def fetch_proxy_from_api():
-#     url = 'https://proxy.scdn.io/api/get_proxy.php?protocol=http&count=20'
-#     params = {'protocol': 'http', 'count': 1}
-#     response = requests.get(url, params=params, timeout=10)
-#     data = response.json()
-#     proxies = data.get('data', {}).get('proxies', [])
-#
-#     proxy_list = [f"http://{p}" for p in proxies ]
-#     return proxy_list
 
 def search_url(url, cookies_str, proxy):
     headers = {
@@ -103,17 +92,6 @@ def search_url(url, cookies_str, proxy):
 
 
 def get_proxy_for_retry():
-    """重试时获取新代理"""
-    # def fetch_proxy_from_api():
-    #     url = 'https://proxy.scdn.io/api/get_proxy.php?protocol=http&count=20'
-    #     params = {'protocol': 'http', 'count': 1}
-    #     response = requests.get(url, params=params, timeout=10)
-    #     data = response.json()
-    #     proxies = data.get('data', {}).get('proxies', [])
-    #     proxy_list = [f"http://{p}" for p in proxies ]
-    #     return proxy_list
-    
-    # 从本地列表获取下一个代理
     return get_next_proxy()
 
 
