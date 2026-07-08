@@ -3,12 +3,11 @@ import os
 import time
 from selenium import webdriver
 from selenium.webdriver.edge.options import Options
-from selenium.webdriver.edge.service import Service
 
 def start():
     q1 = Options()
     q1.add_experimental_option('detach', True)  # 保持浏览器开启状态
-    a1 = webdriver.Edge(service=Service('msedgedriver.exe'),options=q1)
+    a1 = webdriver.Edge(options=q1)
     return a1
 def get_Cookie():
     if not os.path.exists('58city_cookies.json'):
